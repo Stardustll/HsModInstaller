@@ -20,6 +20,8 @@ public:
 private slots:
     void on_toolButton_clicked(bool checked);
 
+    void on_pushButton_3_clicked();
+
 private:
     Ui::HsModInstaller *ui;
 };

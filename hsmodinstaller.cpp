@@ -2,12 +2,15 @@
 #include "./ui_hsmodinstaller.h"
 #include <QSettings>
 #include <QFileDialog>
+#include <QDesktopServices>
+#include <QUrl>
 
 HsModInstaller::HsModInstaller(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::HsModInstaller)
 {
     ui->setupUi(this);
+    ui->progressBar->setVisible(false);
     QString path = getPath();
     if(!path.isEmpty()){
         ui->lineEdit->setText(path);
@@ -39,3 +42,15 @@ QString getPath(){
 
     return settings.value("InstallLocation").toString();
 }
+void HsModInstaller::on_pushButton_3_clicked()
+{
+    QString url = "http://127.0.0.1:58744";
+    QDesktopServices::openUrl(QUrl(url));
+}
+
+
+void HsModInstaller::on_pushButton_clicked()
+{
+    ui->progressBar->setVisible(true);
+}
+
