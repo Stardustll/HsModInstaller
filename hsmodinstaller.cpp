@@ -7,6 +7,7 @@
 #include <QDesktopServices>
 #include <QMessageBox>
 #include <QUrl>
+#include <QProcess>
 
 HsModInstaller::HsModInstaller(QWidget *parent)
     : QMainWindow(parent)
@@ -69,6 +70,14 @@ void HsModInstaller::on_pushButton_clicked()
         QString src = ":/file/resources/" + files[i];
         QString dst = targetPath + "/" + files[i];
 
+        if(i==1 && QDir().mkpath(targetPath+"\\BepInEx\\plugins")){
+            if(QFile::exists(targetPath+"\\BepInEx\\plugins\\" + files[i]))QFile::remove(targetPath+"\\BepInEx\\plugins\\" + files[i]);
+            if(QFile::copy(src,targetPath+"\\BepInEx\\plugins\\" + files[i])){
+                QFile::setPermissions(dst,QFile::WriteOwner|QFile::ReadOwner);
+                continue;
+            }
+        }
+
         if(QFile::exists(dst))QFile::remove(dst);
         if(QFile::copy(src,dst)){
             QFile::setPermissions(dst,QFile::WriteOwner|QFile::ReadOwner);
@@ -78,6 +87,32 @@ void HsModInstaller::on_pushButton_clicked()
         ui->progressBar->setValue((i+1)*20);
         QCoreApplication::processEvents();
     }
+
+
+
+    // 解压文件
+    QString cmd = QString("powershell -Command \"Expand-Archive -Path '%1' -DestinationPath '%2' -Force\"");
+    QProcess process;
+    process.startCommand(cmd.arg(QDir::toNativeSeparators(targetPath+"/"+files[0]), QDir::toNativeSeparators(targetPath)));
+    if (!process.waitForFinished(-1)) { // -1 表示无限等待直到完成
+        QMessageBox::critical(this, "错误", "解压超时或失败！");
+        return;
+    }
+    QFile::remove(QDir::toNativeSeparators(targetPath+"/"+files[0]));
+    ui->progressBar->setValue(80);
+    QCoreApplication::processEvents();
+
+    QDir().mkpath(targetPath+"/BepInEx/HsMod/config");
+    process.startCommand(cmd.arg(QDir::toNativeSeparators(targetPath+"/"+files[2]), QDir::toNativeSeparators(targetPath+"/BepInEx/HsMod/config")));
+    if (!process.waitForFinished(-1)) { // -1 表示无限等待直到完成
+        QMessageBox::critical(this, "错误", "解压超时或失败！");
+        return;
+    }
+    QFile::remove(QDir::toNativeSeparators(targetPath+"/"+files[2]));
+    ui->progressBar->setValue(100);
+    QCoreApplication::processEvents();
+
+    QMessageBox::information(this,"提示","安装成功！");
 }
 
 // 卸载mod
@@ -98,6 +133,8 @@ void HsModInstaller::on_uninstallBtn_clicked()
             ui->progressBar->setRange(0,0);
             ui->progressBar->setVisible(true);
             dir.removeRecursively();
+            ui->progressBar->setRange(0,100);
+            ui->progressBar->setValue(100);
             QMessageBox::information(this,"提示","卸载成功！");
         } catch (...) {
             QMessageBox::critical(this,"错误","卸载失败！");
@@ -105,5 +142,11 @@ void HsModInstaller::on_uninstallBtn_clicked()
     }else{
         QMessageBox::information(this,"提示","未发现目标文件夹");
     }
+}
+
+
+void HsModInstaller::on_illustrateBtn_clicked()
+{
+    QMessageBox::information(this,"说明","这里什么都没有\n右侧界面已经说的够多了哦。");
 }
 

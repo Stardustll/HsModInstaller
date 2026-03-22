@@ -6,10 +6,11 @@
         <file>icons/提示.png</file>
         <file>icons/野性之心古夫_64x64.ico</file>
         <file>icons/背景.png</file>
+        <file>icons/bg.png</file>
     </qresource>
     <qresource prefix="/file">
         <file>resources/HsMod.dll</file>
-        <file>resources/BepInEx.zip</file>
         <file>resources/HsModConfigManager.zip</file>
+        <file>resources/BepInEx.zip</file>
     </qresource>
 </RCC>

@@ -27,6 +27,8 @@ private slots:
     void on_uninstallBtn_clicked();
 
 
+    void on_illustrateBtn_clicked();
+
 private:
     Ui::HsModInstaller *ui;
 };
