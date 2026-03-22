@@ -3,6 +3,7 @@
 #include <QSettings>
 #include <QFileDialog>
 #include <QFile>
+#include <QDir>
 #include <QDesktopServices>
 #include <QMessageBox>
 #include <QUrl>
@@ -37,6 +38,7 @@ void HsModInstaller::on_toolButton_clicked(bool checked)
     }
 }
 
+// 获取炉石安装路径
 QString getPath(){
     QString regPath = "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Hearthstone";
 
@@ -44,22 +46,45 @@ QString getPath(){
 
     return settings.value("InstallLocation").toString();
 }
+
+// 打开配置网址
 void HsModInstaller::on_pushButton_3_clicked()
 {
     QString url = "http://127.0.0.1:58744";
     QDesktopServices::openUrl(QUrl(url));
 }
 
-
+// 安装mod
 void HsModInstaller::on_pushButton_clicked()
 {
+    ui->progressBar->reset();
+    ui->progressBar->setRange(0,100);
     ui->progressBar->setVisible(true);
+
+    QString targetPath = ui->lineEdit->text();
+
+    QStringList files = {"BepInEx.zip","HsMod.dll","HsModConfigManager.zip"};
+
+    for(int i = 0;i<files.size();i++){
+        QString src = ":/file/resources/" + files[i];
+        QString dst = targetPath + "/" + files[i];
+
+        if(QFile::exists(dst))QFile::remove(dst);
+        if(QFile::copy(src,dst)){
+            QFile::setPermissions(dst,QFile::WriteOwner|QFile::ReadOwner);
+        }
+
+        // 更新进度条
+        ui->progressBar->setValue((i+1)*20);
+        QCoreApplication::processEvents();
+    }
 }
 
-
-void HsModInstaller::on_pushButton_2_clicked()
+// 卸载mod
+void HsModInstaller::on_uninstallBtn_clicked()
 {
-    QString dir = ui->lineEdit->text() + "/BepInEx";
+    QString targetdir = ui->lineEdit->text() + "/BepInEx";
+    QDir dir(targetdir);
 
     auto result = QMessageBox::question(this,"确认","确定要卸载吗？\n注意，此操作会删除整个BepInEx文件夹！",
                     QMessageBox::Yes|QMessageBox::No);
@@ -68,9 +93,11 @@ void HsModInstaller::on_pushButton_2_clicked()
         return;
     }
 
-    if(QFile::exists(dir)){
+    if(dir.exists()){
         try {
-            QFile::remove(dir);
+            ui->progressBar->setRange(0,0);
+            ui->progressBar->setVisible(true);
+            dir.removeRecursively();
             QMessageBox::information(this,"提示","卸载成功！");
         } catch (...) {
             QMessageBox::critical(this,"错误","卸载失败！");
