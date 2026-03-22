@@ -2,7 +2,9 @@
 #include "./ui_hsmodinstaller.h"
 #include <QSettings>
 #include <QFileDialog>
+#include <QFile>
 #include <QDesktopServices>
+#include <QMessageBox>
 #include <QUrl>
 
 HsModInstaller::HsModInstaller(QWidget *parent)
@@ -52,5 +54,29 @@ void HsModInstaller::on_pushButton_3_clicked()
 void HsModInstaller::on_pushButton_clicked()
 {
     ui->progressBar->setVisible(true);
+}
+
+
+void HsModInstaller::on_pushButton_2_clicked()
+{
+    QString dir = ui->lineEdit->text() + "/BepInEx";
+
+    auto result = QMessageBox::question(this,"确认","确定要卸载吗？\n注意，此操作会删除整个BepInEx文件夹！",
+                    QMessageBox::Yes|QMessageBox::No);
+
+    if(result == QMessageBox::No){
+        return;
+    }
+
+    if(QFile::exists(dir)){
+        try {
+            QFile::remove(dir);
+            QMessageBox::information(this,"提示","卸载成功！");
+        } catch (...) {
+            QMessageBox::critical(this,"错误","卸载失败！");
+        }
+    }else{
+        QMessageBox::information(this,"提示","未发现目标文件夹");
+    }
 }
 
