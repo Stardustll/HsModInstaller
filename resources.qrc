@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/">
+        <file>icons/安装.png</file>
+        <file>icons/卸载.png</file>
+        <file>icons/文件夹.png</file>
+    </qresource>
+</RCC>
