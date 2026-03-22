@@ -1,6 +1,7 @@
 #include "hsmodinstaller.h"
 #include "./ui_hsmodinstaller.h"
 #include <QSettings>
+#include <QFileDialog>
 
 HsModInstaller::HsModInstaller(QWidget *parent)
     : QMainWindow(parent)
@@ -20,7 +21,15 @@ HsModInstaller::~HsModInstaller()
 
 void HsModInstaller::on_toolButton_clicked(bool checked)
 {
+     QString dir = QFileDialog::getExistingDirectory(this,
+                    "选择炉石传说根目录",
+                    "C:\\Program Files (x86)",
+                    QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
 
+    if(!dir.isEmpty()){
+         dir = QDir::toNativeSeparators(dir);
+        ui->lineEdit->setText(dir);
+    }
 }
 
 QString getPath(){
