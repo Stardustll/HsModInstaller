@@ -17,7 +17,12 @@ public:
     HsModInstaller(QWidget *parent = nullptr);
     ~HsModInstaller();
 
+private slots:
+    void on_toolButton_clicked(bool checked);
+
 private:
     Ui::HsModInstaller *ui;
 };
+
+QString getPath();
 #endif // HSMODINSTALLER_H
