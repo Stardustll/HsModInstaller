@@ -3,5 +3,8 @@
         <file>icons/安装.png</file>
         <file>icons/卸载.png</file>
         <file>icons/文件夹.png</file>
+        <file>icons/提示.png</file>
+        <file>icons/野性之心古夫_64x64.ico</file>
+        <file>icons/背景.png</file>
     </qresource>
 </RCC>
