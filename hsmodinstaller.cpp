@@ -183,6 +183,8 @@ void HsModInstaller::on_illustrateBtn_clicked()
 
 void HsModInstaller::on_InsHmBtn_clicked()
 {
+    ui->progressBar->setValue(0);
+
     auto result = QMessageBox::question(this,"提示","请先确保安装好BepInEx依赖！",
                                         QMessageBox::Yes|QMessageBox::No);
 
@@ -199,10 +201,59 @@ void HsModInstaller::on_InsHmBtn_clicked()
         return;
     }
 
+    // 安装配置界面
+    QDir().mkpath(targetPath+"/BepInEx/HsMod/config");
+    if(QFile::copy(":/file/resources/HsModConfigManager.zip",targetPath+"/BepInEx/HsMod/config/HsModConfigManager.zip")){
+        QString cmd = QString("powershell -Command \"Expand-Archive -Path '%1' -DestinationPath '%2' -Force\"");
+        QProcess process;
+        process.startCommand(cmd.arg(QDir::toNativeSeparators(targetPath+"/BepInEx/HsMod/config/HsModConfigManager.zip"),
+                                     QDir::toNativeSeparators(targetPath+"/BepInEx/HsMod/config")));
+        if (!process.waitForFinished(-1)) { // -1 表示无限等待直到完成
+            QMessageBox::critical(this, "错误", "解压超时或失败！");
+            return;
+        }
+
+        QFile::remove(QDir::toNativeSeparators(targetPath+"/BepInEx/HsMod/config/HsModConfigManager.zip"));
+        ui->progressBar->setValue(80);
+        QCoreApplication::processEvents();
+    }
+
     QDir().mkpath(targetPath+"\\BepInEx\\plugins");
     if(QFile::copy(src,dst)){
         QFile::setPermissions(dst,QFile::WriteOwner|QFile::ReadOwner);
         QMessageBox::information(this,"提示","安装成功！");
     }
+    ui->progressBar->setValue(100);
+
+}
+
+
+void HsModInstaller::on_InHbBtn_clicked()
+{
+    ui->progressBar->setValue(0);
+
+    auto result = QMessageBox::question(this,"提示","请先确保安装好BepInEx依赖！",
+                                        QMessageBox::Yes|QMessageBox::No);
+
+    if(result == QMessageBox::No){
+        return;
+    }
+
+    QString targetPath = ui->lineEdit->text();
+    QString src = ":/file/resources/HsBattle.dll";
+    QString dst = targetPath + "\\BepInEx\\plugins\\HsBattle.dll";
+
+    if(!QFile::exists(targetPath+"\\BepInEx")){
+        QMessageBox::information(this,"提示","未发现BepInEx依赖，请先进行安装！");
+        return;
+    }
+
+    QDir().mkpath(targetPath+"\\BepInEx\\plugins");
+    if(QFile::copy(src,dst)){
+        QFile::setPermissions(dst,QFile::WriteOwner|QFile::ReadOwner);
+        QMessageBox::information(this,"提示","安装成功！");
+    }
+
+    ui->progressBar->setValue(100);
 }
 

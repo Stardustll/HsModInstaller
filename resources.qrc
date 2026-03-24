@@ -12,5 +12,6 @@
         <file>resources/HsMod.dll</file>
         <file>resources/HsModConfigManager.zip</file>
         <file>resources/BepInEx.zip</file>
+        <file>resources/HsBattle.dll</file>
     </qresource>
 </RCC>

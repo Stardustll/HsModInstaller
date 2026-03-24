@@ -31,6 +31,8 @@ private slots:
 
     void on_InsHmBtn_clicked();
 
+    void on_InHbBtn_clicked();
+
 private:
     Ui::HsModInstaller *ui;
 };
