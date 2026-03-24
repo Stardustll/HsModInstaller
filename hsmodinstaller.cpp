@@ -1,14 +1,86 @@
 #include "hsmodinstaller.h"
 #include "./ui_hsmodinstaller.h"
+#include "appinfo.h"
 #include "description.h"
 #include <QSettings>
 #include <QFileDialog>
 #include <QFile>
 #include <QDir>
+#include <QCoreApplication>
 #include <QDesktopServices>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QMessageBox>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QNetworkRequest>
+#include <QTimer>
 #include <QUrl>
 #include <QProcess>
+#include <QVersionNumber>
+
+namespace {
+
+QString versionLabelText(const QString &version, const QString &status = QString())
+{
+    QString labelText = QStringLiteral("当前版本：%1").arg(version.toHtmlEscaped());
+    if (!status.isEmpty()) {
+        labelText += QStringLiteral("（%1）").arg(status.toHtmlEscaped());
+    }
+
+    return QStringLiteral(
+               "<html><head/><body><p><span style=\" color:#ffffff;\">%1</span></p></body></html>")
+        .arg(labelText);
+}
+
+QString normalizeVersionText(QString versionText)
+{
+    versionText = versionText.trimmed();
+
+    while (!versionText.isEmpty() && !versionText.front().isDigit()) {
+        versionText.remove(0, 1);
+    }
+
+    int suffixIndex = versionText.indexOf('-');
+    const int buildIndex = versionText.indexOf('+');
+    if (suffixIndex < 0 || (buildIndex >= 0 && buildIndex < suffixIndex)) {
+        suffixIndex = buildIndex;
+    }
+    if (suffixIndex >= 0) {
+        versionText.truncate(suffixIndex);
+    }
+
+    return versionText;
+}
+
+QVersionNumber parseVersion(const QString &versionText)
+{
+    return QVersionNumber::fromString(normalizeVersionText(versionText)).normalized();
+}
+
+bool isRemoteVersionNewer(const QString &localVersionText, const QString &remoteVersionText)
+{
+    const QVersionNumber localVersion = parseVersion(localVersionText);
+    const QVersionNumber remoteVersion = parseVersion(remoteVersionText);
+
+    if (!localVersion.isNull() && !remoteVersion.isNull()) {
+        return QVersionNumber::compare(remoteVersion, localVersion) > 0;
+    }
+
+    return !remoteVersionText.trimmed().isEmpty()
+        && remoteVersionText.trimmed() != localVersionText.trimmed();
+}
+
+QString updatePageUrl(const QString &htmlUrl)
+{
+    if (!htmlUrl.trimmed().isEmpty()) {
+        return htmlUrl;
+    }
+
+    return QStringLiteral(HSMODINSTALLER_REPOSITORY_URL "/releases/latest");
+}
+
+} // namespace
 
 HsModInstaller::HsModInstaller(QWidget *parent)
     : QMainWindow(parent)
@@ -16,10 +88,14 @@ HsModInstaller::HsModInstaller(QWidget *parent)
 {
     ui->setupUi(this);
     ui->progressBar->setVisible(false);
+    ui->label_3->setText(versionLabelText(QCoreApplication::applicationVersion()));
     QString path = getPath();
     if(!path.isEmpty()){
         ui->lineEdit->setText(path);
     }
+
+    m_networkManager = new QNetworkAccessManager(this);
+    QTimer::singleShot(0, this, &HsModInstaller::checkForUpdates);
 }
 
 HsModInstaller::~HsModInstaller()
@@ -54,6 +130,98 @@ void HsModInstaller::on_pushButton_3_clicked()
 {
     QString url = "http://127.0.0.1:58744";
     QDesktopServices::openUrl(QUrl(url));
+}
+
+void HsModInstaller::checkForUpdates()
+{
+    const QString currentVersion = QCoreApplication::applicationVersion();
+    ui->label_3->setText(versionLabelText(currentVersion, QStringLiteral("正在检查更新")));
+
+    QNetworkRequest request(QUrl(QStringLiteral(HSMODINSTALLER_RELEASE_API_URL)));
+    request.setHeader(QNetworkRequest::UserAgentHeader,
+                      QStringLiteral("HsModInstaller/%1").arg(currentVersion));
+    request.setRawHeader("Accept", "application/vnd.github+json");
+    request.setRawHeader("X-GitHub-Api-Version", "2022-11-28");
+#if QT_VERSION >= QT_VERSION_CHECK(5, 9, 0)
+    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
+                         QNetworkRequest::NoLessSafeRedirectPolicy);
+#endif
+
+    QNetworkReply *reply = m_networkManager->get(request);
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+        handleUpdateCheckFinished(reply);
+    });
+}
+
+void HsModInstaller::handleUpdateCheckFinished(QNetworkReply *reply)
+{
+    const QString currentVersion = QCoreApplication::applicationVersion();
+    const QString errorMessage = reply->errorString();
+    const int httpStatus = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+    const QByteArray responseData = reply->readAll();
+    const QNetworkReply::NetworkError networkError = reply->error();
+    reply->deleteLater();
+
+    if (networkError != QNetworkReply::NoError || httpStatus < 200 || httpStatus >= 300) {
+        ui->label_3->setText(versionLabelText(currentVersion, QStringLiteral("更新检查失败")));
+        ui->label_3->setToolTip(QStringLiteral("自动检查更新失败：%1").arg(errorMessage));
+        return;
+    }
+
+    QJsonParseError parseError{};
+    const QJsonDocument doc = QJsonDocument::fromJson(responseData, &parseError);
+    if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
+        ui->label_3->setText(versionLabelText(currentVersion, QStringLiteral("更新检查失败")));
+        ui->label_3->setToolTip(QStringLiteral("更新信息解析失败：%1").arg(parseError.errorString()));
+        return;
+    }
+
+    const QJsonObject releaseObject = doc.object();
+    const QString latestTag = releaseObject.value("tag_name").toString().trimmed();
+    const QString releaseName = releaseObject.value("name").toString().trimmed();
+    const QString releaseNotes = releaseObject.value("body").toString().trimmed();
+    const QString htmlUrl = releaseObject.value("html_url").toString().trimmed();
+
+    if (latestTag.isEmpty()) {
+        ui->label_3->setText(versionLabelText(currentVersion, QStringLiteral("更新检查失败")));
+        ui->label_3->setToolTip(QStringLiteral("GitHub 返回的数据里没有 tag_name。"));
+        return;
+    }
+
+    if (!isRemoteVersionNewer(currentVersion, latestTag)) {
+        ui->label_3->setText(versionLabelText(currentVersion, QStringLiteral("已是最新")));
+        ui->label_3->setToolTip(QStringLiteral("已检查到最新版本：%1").arg(latestTag));
+        return;
+    }
+
+    ui->label_3->setText(
+        versionLabelText(currentVersion, QStringLiteral("可更新到 %1").arg(latestTag)));
+    ui->label_3->setToolTip(QStringLiteral("检测到新版本：%1").arg(latestTag));
+
+    QMessageBox updateDialog(this);
+    updateDialog.setIcon(QMessageBox::Information);
+    updateDialog.setWindowTitle(QStringLiteral("发现新版本"));
+    updateDialog.setText(QStringLiteral("检测到新版本：%1").arg(latestTag));
+
+    QString detailText = QStringLiteral("当前版本：%1").arg(currentVersion);
+    if (!releaseName.isEmpty() && releaseName != latestTag) {
+        detailText += QStringLiteral("\n版本名称：%1").arg(releaseName);
+    }
+    detailText += QStringLiteral("\n是否打开 GitHub 发布页查看更新？");
+    updateDialog.setInformativeText(detailText);
+
+    if (!releaseNotes.isEmpty()) {
+        updateDialog.setDetailedText(releaseNotes);
+    }
+
+    QPushButton *openButton =
+        updateDialog.addButton(QStringLiteral("打开发布页"), QMessageBox::AcceptRole);
+    updateDialog.addButton(QStringLiteral("稍后再说"), QMessageBox::RejectRole);
+    updateDialog.exec();
+
+    if (updateDialog.clickedButton() == openButton) {
+        QDesktopServices::openUrl(QUrl(updatePageUrl(htmlUrl)));
+    }
 }
 
 // 安装依赖

@@ -3,6 +3,9 @@
 
 #include <QMainWindow>
 
+class QNetworkAccessManager;
+class QNetworkReply;
+
 QT_BEGIN_NAMESPACE
 namespace Ui {
 class HsModInstaller;
@@ -33,8 +36,12 @@ private slots:
 
     void on_InHbBtn_clicked();
 
+    void checkForUpdates();
+    void handleUpdateCheckFinished(QNetworkReply *reply);
+
 private:
     Ui::HsModInstaller *ui;
+    QNetworkAccessManager *m_networkManager = nullptr;
 };
 
 QString getPath();

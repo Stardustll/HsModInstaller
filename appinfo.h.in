@@ -1,0 +1,5 @@
+#pragma once
+
+#define HSMODINSTALLER_VERSION "@PROJECT_VERSION@"
+#define HSMODINSTALLER_RELEASE_API_URL "https://api.github.com/repos/Stardustll/HsModInstaller/releases/latest"
+#define HSMODINSTALLER_REPOSITORY_URL "https://github.com/Stardustll/HsModInstaller"

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(HsModInstaller VERSION 1.0.0 LANGUAGES CXX)
+project(HsModInstaller VERSION 2.0.1 LANGUAGES CXX)
 
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
@@ -9,8 +9,10 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets)
+find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets Network)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Network)
+
+configure_file(appinfo.h.in appinfo.h @ONLY)
 
 set(PROJECT_SOURCES
         main.cpp
@@ -48,7 +50,12 @@ endif()
 
 target_link_libraries(HsModInstaller PRIVATE
     Qt${QT_VERSION_MAJOR}::Widgets
+    Qt${QT_VERSION_MAJOR}::Network
     shell32
+)
+
+target_include_directories(HsModInstaller PRIVATE
+    ${CMAKE_CURRENT_BINARY_DIR}
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
