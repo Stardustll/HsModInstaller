@@ -1,5 +1,6 @@
 #include "hsmodinstaller.h"
 #include "./ui_hsmodinstaller.h"
+#include "description.h"
 #include <QSettings>
 #include <QFileDialog>
 #include <QFile>
@@ -55,7 +56,7 @@ void HsModInstaller::on_pushButton_3_clicked()
     QDesktopServices::openUrl(QUrl(url));
 }
 
-// 安装mod
+// 安装依赖
 void HsModInstaller::on_pushButton_clicked()
 {
     ui->progressBar->reset();
@@ -64,6 +65,7 @@ void HsModInstaller::on_pushButton_clicked()
 
     QString targetPath = ui->lineEdit->text();
 
+    /*
     QStringList files = {"BepInEx.zip","HsMod.dll","HsModConfigManager.zip"};
 
     for(int i = 0;i<files.size();i++){
@@ -113,9 +115,35 @@ void HsModInstaller::on_pushButton_clicked()
     QCoreApplication::processEvents();
 
     QMessageBox::information(this,"提示","安装成功！");
+    */
+    QString src = ":/file/resources/BepInEx.zip";
+    QString dst = targetPath + "/BepInEx.zip";
+
+    if(QFile::exists(dst))QFile::remove(dst);
+    if(QFile::copy(src,dst)){
+        QFile::setPermissions(dst,QFile::WriteOwner|QFile::ReadOwner);
+    }
+
+    // 更新进度条
+    ui->progressBar->setValue(50);
+    QCoreApplication::processEvents();
+
+    // 解压文件
+    QString cmd = QString("powershell -Command \"Expand-Archive -Path '%1' -DestinationPath '%2' -Force\"");
+    QProcess process;
+    process.startCommand(cmd.arg(QDir::toNativeSeparators(dst), QDir::toNativeSeparators(targetPath)));
+    if (!process.waitForFinished(-1)) { // -1 表示无限等待直到完成
+        QMessageBox::critical(this, "错误", "解压超时或失败！");
+        return;
+    }
+    QFile::remove(QDir::toNativeSeparators(dst));
+    ui->progressBar->setValue(100);
+    QCoreApplication::processEvents();
+
+    QMessageBox::information(this,"提示","安装成功！");
 }
 
-// 卸载mod
+// 完全卸载
 void HsModInstaller::on_uninstallBtn_clicked()
 {
     QString targetdir = ui->lineEdit->text() + "/BepInEx";
@@ -147,6 +175,34 @@ void HsModInstaller::on_uninstallBtn_clicked()
 
 void HsModInstaller::on_illustrateBtn_clicked()
 {
-    QMessageBox::information(this,"说明","这里什么都没有\n右侧界面已经说的够多了哦。");
+    Description d;
+    d.show();
+    d.exec();
+}
+
+
+void HsModInstaller::on_InsHmBtn_clicked()
+{
+    auto result = QMessageBox::question(this,"提示","请先确保安装好BepInEx依赖！",
+                                        QMessageBox::Yes|QMessageBox::No);
+
+    if(result == QMessageBox::No){
+        return;
+    }
+
+    QString targetPath = ui->lineEdit->text();
+    QString src = ":/file/resources/HsMod.dll";
+    QString dst = targetPath + "\\BepInEx\\plugins\\HsMod.dll";
+
+    if(!QFile::exists(targetPath+"\\BepInEx")){
+        QMessageBox::information(this,"提示","未发现BepInEx依赖，请先进行安装！");
+        return;
+    }
+
+    QDir().mkpath(targetPath+"\\BepInEx\\plugins");
+    if(QFile::copy(src,dst)){
+        QFile::setPermissions(dst,QFile::WriteOwner|QFile::ReadOwner);
+        QMessageBox::information(this,"提示","安装成功！");
+    }
 }
 
