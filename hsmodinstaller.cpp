@@ -387,9 +387,20 @@ void HsModInstaller::on_InsHmBtn_clicked()
     }
 
     QDir().mkpath(targetPath+"\\BepInEx\\plugins");
+    if(QFile::exists(dst)){
+        QFile::setPermissions(dst,QFile::WriteOwner|QFile::ReadOwner);
+        if(!QFile::remove(dst)){
+            QMessageBox::critical(this,"错误","HsMod.dll 已存在，且无法覆盖，请先关闭占用该文件的程序后重试！");
+            return;
+        }
+    }
+
     if(QFile::copy(src,dst)){
         QFile::setPermissions(dst,QFile::WriteOwner|QFile::ReadOwner);
         QMessageBox::information(this,"提示","安装成功！");
+    }else{
+        QMessageBox::critical(this,"错误","HsMod.dll 覆盖失败！");
+        return;
     }
     ui->progressBar->setValue(100);
 
