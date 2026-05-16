@@ -351,7 +351,9 @@ void HsModInstaller::on_illustrateBtn_clicked()
 
 void HsModInstaller::on_InsHmBtn_clicked()
 {
-    ui->progressBar->setValue(0);
+    ui->progressBar->reset();
+    ui->progressBar->setRange(0,100);
+    ui->progressBar->setVisible(true);
 
     auto result = QMessageBox::question(this,"提示","请先确保安装好BepInEx依赖！",
                                         QMessageBox::Yes|QMessageBox::No);
